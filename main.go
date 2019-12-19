@@ -1,32 +1,39 @@
 package main
 
+import (
+	"fmt"
+	"github.com/hatobus/resistorgen/resistor"
+	"image"
+	"image/color"
+	"image/draw"
+	"image/png"
+	"os"
+)
+
 func main() {
-	// width := 200
-	// height := 100
 
-	// upLeft := image.Point{0, 0}
-	// lowRight := image.Point{width, height}
+	colors, _ := resistor.GenerateColor("4k7")
 
-	// img := image.NewRGBA(image.Rectangle{upLeft, lowRight})
+	width := 200
+	height := 100
 
-	// // Colors are defined by Red, Green, Blue, Alpha uint8 values.
-	// cyan := color.RGBA{100, 200, 200, 0xff}
+	resistorimage := image.NewRGBA(image.Rect(0, 0, width, height))
+	fillcolor := color.RGBA{255, 192, 203, 255}
 
-	// // Set color for each pixel.
-	// for x := 0; x < width; x++ {
-	// 	for y := 0; y < height; y++ {
-	// 		switch {
-	// 		case x < width/2 && y < height/2: // upper left quadrant
-	// 			img.Set(x, y, cyan)
-	// 		case x >= width/2 && y >= height/2: // lower right quadrant
-	// 			img.Set(x, y, color.White)
-	// 		default:
-	// 			// Use zero value.
-	// 		}
-	// 	}
-	// }
+	draw.Draw(resistorimage, resistorimage.Bounds(), &image.Uniform{fillcolor}, image.ZP, draw.Src)
 
-	// // Encode as PNG.
-	// f, _ := os.Create("image.png")
-	// png.Encode(f, img)
+	firstband := image.Rect(24, 0, 44, height)
+	draw.Draw(resistorimage, firstband, &image.Uniform{colors.FirstBand}, image.ZP, draw.Src)
+
+	secondband := image.Rect(68, 0, 88, height)
+	draw.Draw(resistorimage, secondband, &image.Uniform{colors.SecondBand}, image.ZP, draw.Over)
+
+	thirdband := image.Rect(112, 0, 132, height)
+	draw.Draw(resistorimage, thirdband, &image.Uniform{colors.ThirdBand}, image.ZP, draw.Over)
+
+	fourthband := image.Rect(156, 0, 176, height)
+	draw.Draw(resistorimage, fourthband, &image.Uniform{colors.Tolerance}, image.ZP, draw.Over)
+
+	f, _ := os.Create(fmt.Sprintf("resistor.png"))
+	png.Encode(f, resistorimage)
 }
