@@ -1,7 +1,6 @@
 package p
 
 import (
-	"bytes"
 	"fmt"
 	"image"
 	"image/color"
@@ -23,6 +22,8 @@ type PostParam struct {
 }
 
 func ResistorResolver(w http.ResponseWriter, r *http.Request) {
+	api := slack.New(os.Getenv("VERIFICATION_TOKEN"))
+
 	s, err := slack.SlashCommandParse(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -43,21 +44,34 @@ func ResistorResolver(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		file, err := os.Open(fname)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		defer file.Close()
+
 		// upload picture
-		uploadparam := &PostParam{
-			Token:          os.Getenv("ACCESS_TOKEN"),
-			Channels:       s.ChannelName,
-			InitialComment: resistor,
+		params := slack.FileUploadParameters{
+			File:           fname,
+			Content:        "picture",
+			Reader:         file,
 			Filename:       fname,
 			Title:          resistor,
+			InitialComment: fmt.Sprintf("%sの抵抗の色です"),
+			Channels:       []string{s.ChannelName},
 		}
 
-		resustirimg := bytes.NewBuffer()
-
-		params := &slack.Msg{
-			Channel: s.ChannelName,
-			Text:    fmt.Printf("%sのカラーコードはこちらです", resistor),
+		_, err = api.UploadFile(params)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
+
+		// params := &slack.Msg{
+		// 	Channel: s.ChannelName,
+		// 	Text:    fmt.Printf("%sのカラーコードはこちらです", resistor),
+		// }
 
 	default:
 	}
