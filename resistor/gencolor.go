@@ -3,6 +3,7 @@ package resistor
 import (
 	"errors"
 	"image/color"
+	"log"
 	"strconv"
 	"strings"
 )
@@ -26,11 +27,14 @@ func GenerateColor(colorstr string) (*Colorbar, error) {
 
 	// finding section for resistor value
 	if len(contain[0]) == 1 {
+		fv, _ := strconv.Atoi(contain[0])
+		firstband = int64(fv)
 		if contain[1] == "" {
-			mag -= 1
-			fv, _ := strconv.Atoi(contain[0])
-			firstband = int64(fv)
+			// mag -= 1
 			secondband = 0
+		} else {
+			sv, _ := strconv.Atoi(contain[1])
+			secondband = int64(sv)
 		}
 	} else if len(contain[0]) == 2 {
 		fv, err := strconv.Atoi(contain[0])
@@ -39,6 +43,7 @@ func GenerateColor(colorstr string) (*Colorbar, error) {
 		}
 		firstband = int64(fv / 10)
 		secondband = int64(fv % 10)
+		mag += 1
 	} else {
 		// 2のときは xxKΩ や xxΩ として決定しているので大丈夫
 		resistor_topvalue, err := strconv.Atoi(contain[0])
@@ -48,12 +53,12 @@ func GenerateColor(colorstr string) (*Colorbar, error) {
 		for i := 0; ; i++ {
 			last1digit := resistor_topvalue % 10
 			resistor_topvalue /= 10
-			mag += 1
 			if int64(resistor_topvalue/10) == 0 {
 				firstband = int64(resistor_topvalue)
 				secondband = int64(last1digit)
 				break
 			}
+			mag += 1
 		}
 	}
 
@@ -77,6 +82,9 @@ func GenerateColor(colorstr string) (*Colorbar, error) {
 		Tolerance:  Bar_GOLD,
 	}
 
+	log.Printf("firstband: %v, secondband: %v, thirdband: %v\n", firstband, secondband, mag)
+	log.Printf("firstband: %v, secondband: %v, thirdband: %v\n", fb, sb, tb)
+
 	return Bar, nil
 }
 
@@ -96,7 +104,7 @@ func getcontains(colorstr string) ([]string, string, error) {
 			}
 		}
 	} else {
-		return []string{string(val)}, "", nil
+		return []string{strconv.Itoa(val)}, "", nil
 	}
 
 	if mulc == "" {
