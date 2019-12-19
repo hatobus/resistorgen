@@ -1,18 +1,71 @@
-package main
+package p
 
 import (
+	"bytes"
 	"fmt"
-	"github.com/hatobus/resistorgen/resistor"
 	"image"
 	"image/color"
 	"image/draw"
 	"image/png"
+	"net/http"
 	"os"
+
+	"github.com/hatobus/resistorgen/resistor"
+	"github.com/nlopes/slack"
 )
 
-func main() {
+type PostParam struct {
+	Token          string `json:"token"`
+	Channels       string `json:"channels"`
+	Filename       string `json:"filename"`
+	InitialComment string `json:"initial_comment"`
+	Title          string `json:"title"`
+}
 
-	colors, _ := resistor.GenerateColor("4k7")
+func ResistorResolver(w http.ResponseWriter, r *http.Request) {
+	s, err := slack.SlashCommandParse(r)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if !s.ValidateToken(os.Getenv("VERIFICATION_TOKEN")) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	switch s.Command {
+	case "/resistor":
+		resistor := s.Text
+		fname, err := generatepic(resistor)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		// upload picture
+		uploadparam := &PostParam{
+			Token:          os.Getenv("ACCESS_TOKEN"),
+			Channels:       s.ChannelName,
+			InitialComment: resistor,
+			Filename:       fname,
+			Title:          resistor,
+		}
+
+		resustirimg := bytes.NewBuffer()
+
+		params := &slack.Msg{
+			Channel: s.ChannelName,
+			Text:    fmt.Printf("%sのカラーコードはこちらです", resistor),
+		}
+
+	default:
+	}
+
+}
+
+func generatepic(value string) (string, error) {
+	colors, _ := resistor.GenerateColor(value)
 
 	width := 200
 	height := 100
@@ -34,6 +87,11 @@ func main() {
 	fourthband := image.Rect(156, 0, 176, height)
 	draw.Draw(resistorimage, fourthband, &image.Uniform{colors.Tolerance}, image.ZP, draw.Over)
 
-	f, _ := os.Create(fmt.Sprintf("resistor.png"))
+	fname := fmt.Sprintf("resistor%s.png", value)
+
+	f, _ := os.Create(fname)
 	png.Encode(f, resistorimage)
+
+	return fname, nil
+
 }
