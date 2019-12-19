@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
+	"log"
 	"net/http"
 	"os"
 
@@ -22,7 +23,7 @@ type PostParam struct {
 }
 
 func ResistorResolver(w http.ResponseWriter, r *http.Request) {
-	api := slack.New(os.Getenv("VERIFICATION_TOKEN"))
+	api := slack.New(os.Getenv("ACCESS_TOKEN"))
 
 	s, err := slack.SlashCommandParse(r)
 	if err != nil {
@@ -46,6 +47,7 @@ func ResistorResolver(w http.ResponseWriter, r *http.Request) {
 
 		file, err := os.Open(fname)
 		if err != nil {
+			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -53,17 +55,18 @@ func ResistorResolver(w http.ResponseWriter, r *http.Request) {
 
 		// upload picture
 		params := slack.FileUploadParameters{
-			File:           fname,
-			Content:        "picture",
+			File: fname,
+			// Content:        "picture",
 			Reader:         file,
 			Filename:       fname,
 			Title:          resistor,
-			InitialComment: fmt.Sprintf("%sの抵抗の色です"),
+			InitialComment: fmt.Sprintf("%sの抵抗の色です", resistor),
 			Channels:       []string{s.ChannelName},
 		}
 
 		_, err = api.UploadFile(params)
 		if err != nil {
+			log.Println(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -75,6 +78,9 @@ func ResistorResolver(w http.ResponseWriter, r *http.Request) {
 
 	default:
 	}
+
+	w.WriteHeader(http.StatusOK)
+	return
 
 }
 
@@ -101,7 +107,7 @@ func generatepic(value string) (string, error) {
 	fourthband := image.Rect(156, 0, 176, height)
 	draw.Draw(resistorimage, fourthband, &image.Uniform{colors.Tolerance}, image.ZP, draw.Over)
 
-	fname := fmt.Sprintf("resistor%s.png", value)
+	fname := fmt.Sprintf("/tmp/resistor%s.png", value)
 
 	f, _ := os.Create(fname)
 	png.Encode(f, resistorimage)
